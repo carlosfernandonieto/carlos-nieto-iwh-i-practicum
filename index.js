@@ -37,11 +37,31 @@ app.get('/', async (req, res) => {
         // If no access token, redirect to HubSpot authorization
         return res.redirect(authUrl);
     }
-    
-    // If authenticated, render home page
-    res.render('home', { 
-        isAuthorized: true 
-    });
+
+    const contacts = 'https://api.hubspot.com/crm/v3/objects/contacts';
+    const headers = {
+        Authorization: `Bearer ${req.session.access_token}`,
+        'Content-Type': 'application/json'
+    }
+
+    try {
+        const resp = await axios.get(contacts, { headers });
+        const data = resp.data.results;
+        res.render('home', { 
+            title: 'Home',
+            data,
+            isAuthorized: true,
+            authUrl: authUrl
+        });    
+    } catch (error) {
+        console.error('Error fetching contacts:', error.response?.data || error.message);
+        if (error.response?.status === 401) {
+            // If token is expired or invalid, clear session and redirect to home
+            req.session.destroy();
+            return res.redirect('/');
+        }
+        res.status(500).send('Error fetching contacts');
+    }
 });
 
 // OAuth callback route
@@ -79,35 +99,35 @@ app.get('/oauth-callback', async (req, res) => {
 });
 
 // Contacts route
-app.get('/contacts', async (req, res) => {
-    if (!req.session.access_token) {
-        return res.redirect('/');
-    }
+// app.get('/contacts', async (req, res) => {
+//     if (!req.session.access_token) {
+//         return res.redirect('/');
+//     }
 
-    const contacts = 'https://api.hubspot.com/crm/v3/objects/contacts';
-    const headers = {
-        Authorization: `Bearer ${req.session.access_token}`,
-        'Content-Type': 'application/json'
-    }
+//     const contacts = 'https://api.hubspot.com/crm/v3/objects/contacts';
+//     const headers = {
+//         Authorization: `Bearer ${req.session.access_token}`,
+//         'Content-Type': 'application/json'
+//     }
 
-    try {
-        const resp = await axios.get(contacts, { headers });
-        const data = resp.data.results;
-        res.render('contacts', { 
-            title: 'Contacts | HubSpot APIs', 
-            data,
-            isAuthorized: true 
-        });      
-    } catch (error) {
-        console.error('Error fetching contacts:', error.response?.data || error.message);
-        if (error.response?.status === 401) {
-            // If token is expired or invalid, clear session and redirect to home
-            req.session.destroy();
-            return res.redirect('/');
-        }
-        res.status(500).send('Error fetching contacts');
-    }
-});
+//     try {
+//         const resp = await axios.get(contacts, { headers });
+//         const data = resp.data.results;
+//         res.render('contacts', { 
+//             title: 'Contacts | HubSpot APIs', 
+//             data,
+//             isAuthorized: true 
+//         });    
+//     } catch (error) {
+//         console.error('Error fetching contacts:', error.response?.data || error.message);
+//         if (error.response?.status === 401) {
+//             // If token is expired or invalid, clear session and redirect to home
+//             req.session.destroy();
+//             return res.redirect('/');
+//         }
+//         res.status(500).send('Error fetching contacts');
+//     }
+// });
 
 // Update custom object route (as in your original code)
 app.get('/update-cobj', async (req, res) => {

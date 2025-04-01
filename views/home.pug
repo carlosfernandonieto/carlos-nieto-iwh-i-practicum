@@ -1,15 +1,23 @@
 doctype html
 html 
     head 
-        title HubSpot OAuth Login
+        title= Home
         meta(name="viewport" content="width=device-width, initial-scale=1")
         link(rel="stylesheet", href="/css/style.css")
     body    
-        h1 HubSpot OAuth Login
-        .container
-            h2 Welcome to the HubSpot Integration
-            p Please log in with your HubSpot account to continue
-            .login-section
-                a.login-button(href=authUrl) Login with HubSpot
-            .nav-links
-                a(href="/contacts") View Contacts
+        h1 Custom Object Table
+        a.update-button(href="/update-cobj") Add/Update this table
+        .cards 
+            table
+                thead
+                    tr
+                        th First Name
+                        th Last Name 
+                        th Email
+                tbody
+                    each contact in data
+                        tr
+                            td #{contact.properties.firstname}
+                            td #{contact.properties.lastname}
+                            td #{contact.properties.email}
+        
