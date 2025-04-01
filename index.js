@@ -1,71 +1,120 @@
-const express = require('express');
-const axios = require('axios');
+require('dotenv').config();
+const express = require("express");
+const axios = require("axios");
 const app = express();
+const session = require('express-session');
 
-app.set('view engine', 'pug');
-app.use(express.static(__dirname + '/public'));
+app.set("view engine", "pug");
+app.use(express.static(__dirname + "/public"));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// * Please DO NOT INCLUDE the private app access token in your repo. Don't do this practicum in your normal account.
-const PRIVATE_APP_ACCESS = '';
+const PORT = 3000;
 
-// TODO: ROUTE 1 - Create a new app.get route for the homepage to call your custom object data. Pass this data along to the front-end and create a new pug template in the views folder.
+// Your HubSpot app credentials
+const CLIENT_ID = process.env.CLIENT_ID;
+const CLIENT_SECRET = process.env.CLIENT_SECRET;
+const REDIRECT_URI = `http://localhost:${PORT}/oauth-callback`;
+const SCOPES = ['crm.objects.custom.read'];
 
-// * Code for Route 1 goes here
+const authUrl =
+  'https://app.hubspot.com/oauth/authorize' +
+  `?client_id=${encodeURIComponent(CLIENT_ID)}` +
+  `&scope=${encodeURIComponent(SCOPES)}` +
+  `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
 
-// TODO: ROUTE 2 - Create a new app.get route for the form to create or update new custom object data. Send this data along in the next route.
+app.use(
+  session({
+    secret: Math.random().toString(36).substring(2),
+    resave: false,
+    saveUninitialized: true,
+  })
+);
 
-// * Code for Route 2 goes here
+// Root route - Check authentication and redirect if needed
+app.get('/', async (req, res) => {
+    if (!req.session.access_token) {
+        // If no access token, redirect to HubSpot authorization
+        return res.redirect(authUrl);
+    }
+    
+    // If authenticated, render home page
+    res.render('home', { 
+        isAuthorized: true 
+    });
+});
 
-// TODO: ROUTE 3 - Create a new app.post route for the custom objects form to create or update your custom object data. Once executed, redirect the user to the homepage.
+// OAuth callback route
+app.get('/oauth-callback', async (req, res) => {
+    const code = req.query.code;
+    
+    if (!code) {
+        return res.status(400).send('No authorization code received');
+    }
 
-// * Code for Route 3 goes here
+    try {
+        // Exchange the authorization code for an access token
+        const tokenResponse = await axios.post('https://api.hubapi.com/oauth/v1/token', null, {
+            params: {
+                grant_type: 'authorization_code',
+                client_id: CLIENT_ID,
+                client_secret: CLIENT_SECRET,
+                redirect_uri: REDIRECT_URI,
+                code: code
+            },
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+        });
 
-/** 
-* * This is sample code to give you a reference for how you should structure your calls. 
+        // Store the access token in session
+        req.session.access_token = tokenResponse.data.access_token;
+        
+        // Redirect to home page
+        res.redirect('/');
+    } catch (error) {
+        console.error('Error getting access token:', error.response?.data || error.message);
+        res.status(500).send('Error getting access token');
+    }
+});
 
-* * App.get sample
+// Contacts route
 app.get('/contacts', async (req, res) => {
+    if (!req.session.access_token) {
+        return res.redirect('/');
+    }
+
     const contacts = 'https://api.hubspot.com/crm/v3/objects/contacts';
     const headers = {
-        Authorization: `Bearer ${PRIVATE_APP_ACCESS}`,
+        Authorization: `Bearer ${req.session.access_token}`,
         'Content-Type': 'application/json'
     }
+
     try {
         const resp = await axios.get(contacts, { headers });
         const data = resp.data.results;
-        res.render('contacts', { title: 'Contacts | HubSpot APIs', data });      
+        res.render('contacts', { 
+            title: 'Contacts | HubSpot APIs', 
+            data,
+            isAuthorized: true 
+        });      
     } catch (error) {
-        console.error(error);
-    }
-});
-
-* * App.post sample
-app.post('/update', async (req, res) => {
-    const update = {
-        properties: {
-            "favorite_book": req.body.newVal
+        console.error('Error fetching contacts:', error.response?.data || error.message);
+        if (error.response?.status === 401) {
+            // If token is expired or invalid, clear session and redirect to home
+            req.session.destroy();
+            return res.redirect('/');
         }
+        res.status(500).send('Error fetching contacts');
     }
-
-    const email = req.query.email;
-    const updateContact = `https://api.hubapi.com/crm/v3/objects/contacts/${email}?idProperty=email`;
-    const headers = {
-        Authorization: `Bearer ${PRIVATE_APP_ACCESS}`,
-        'Content-Type': 'application/json'
-    };
-
-    try { 
-        await axios.patch(updateContact, update, { headers } );
-        res.redirect('back');
-    } catch(err) {
-        console.error(err);
-    }
-
 });
-*/
 
+// Update custom object route (as in your original code)
+app.get('/update-cobj', async (req, res) => {
+    if (!req.session.access_token) {
+        return res.redirect('/');
+    }
+    res.render('update-cobj', { title: 'Update Custom Object' });
+});
 
-// * Localhost
-app.listen(3000, () => console.log('Listening on http://localhost:3000'));
+app.listen(PORT, () => console.log(`=== Starting your app on http://localhost:${PORT} ===`));
