@@ -15,12 +15,12 @@ const PORT = 3000;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const REDIRECT_URI = `http://localhost:${PORT}/oauth-callback`;
-const SCOPES = ['crm.objects.custom.read'];
+const SCOPES = ['crm.objects.contacts.write','crm.schemas.custom.read', 'crm.objects.custom.read', 'crm.objects.custom.write', 'oauth', 'crm.objects.contacts.read'];
 
 const authUrl =
   'https://app.hubspot.com/oauth/authorize' +
   `?client_id=${encodeURIComponent(CLIENT_ID)}` +
-  `&scope=${encodeURIComponent(SCOPES)}` +
+  `&scope=${encodeURIComponent(SCOPES.join(" "))}` +
   `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
 
 app.use(
