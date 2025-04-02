@@ -38,14 +38,18 @@ app.get('/', async (req, res) => {
         return res.redirect(authUrl);
     }
 
-    const contacts = 'https://api.hubspot.com/crm/v3/objects/contacts';
+    // Updated URL for custom object with ID: locations
+    const customObjectEndpoint = 'https://api.hubapi.com/crm/v3/objects/locations?properties=population,country,continent,name';
     const headers = {
         Authorization: `Bearer ${req.session.access_token}`,
         'Content-Type': 'application/json'
     }
 
     try {
-        const resp = await axios.get(contacts, { headers });
+        // You can add query parameters for pagination, properties, etc.
+        const resp = await axios.get(customObjectEndpoint, { 
+            headers,
+        });
         const data = resp.data.results;
         res.render('home', { 
             title: 'Home',
@@ -53,14 +57,15 @@ app.get('/', async (req, res) => {
             isAuthorized: true,
             authUrl: authUrl
         });    
+        
     } catch (error) {
-        console.error('Error fetching contacts:', error.response?.data || error.message);
+        console.error('Error fetching custom object data:', error.response?.data || error.message);
         if (error.response?.status === 401) {
             // If token is expired or invalid, clear session and redirect to home
             req.session.destroy();
             return res.redirect('/');
         }
-        res.status(500).send('Error fetching contacts');
+        res.status(500).send('Error fetching custom object data');
     }
 });
 
@@ -98,43 +103,58 @@ app.get('/oauth-callback', async (req, res) => {
     }
 });
 
-// Contacts route
-// app.get('/contacts', async (req, res) => {
-//     if (!req.session.access_token) {
-//         return res.redirect('/');
-//     }
-
-//     const contacts = 'https://api.hubspot.com/crm/v3/objects/contacts';
-//     const headers = {
-//         Authorization: `Bearer ${req.session.access_token}`,
-//         'Content-Type': 'application/json'
-//     }
-
-//     try {
-//         const resp = await axios.get(contacts, { headers });
-//         const data = resp.data.results;
-//         res.render('contacts', { 
-//             title: 'Contacts | HubSpot APIs', 
-//             data,
-//             isAuthorized: true 
-//         });    
-//     } catch (error) {
-//         console.error('Error fetching contacts:', error.response?.data || error.message);
-//         if (error.response?.status === 401) {
-//             // If token is expired or invalid, clear session and redirect to home
-//             req.session.destroy();
-//             return res.redirect('/');
-//         }
-//         res.status(500).send('Error fetching contacts');
-//     }
-// });
-
 // Update custom object route (as in your original code)
 app.get('/update-cobj', async (req, res) => {
     if (!req.session.access_token) {
         return res.redirect('/');
     }
     res.render('update-cobj', { title: 'Update Custom Object' });
+});
+
+// POST route to handle custom object updates
+app.post('/update-cobj', async (req, res) => {
+    if (!req.session.access_token) {
+        return res.redirect('/');
+    }
+
+    const { name, location, population, continent } = req.body;
+    
+    if (!name || !location || !population || !continent) {
+        return res.status(400).send('All fields are required');
+    }
+
+    const customObjectEndpoint = 'https://api.hubapi.com/crm/v3/objects/locations';
+    const headers = {
+        Authorization: `Bearer ${req.session.access_token}`,
+        'Content-Type': 'application/json'
+    };
+
+    const properties = {
+        name: name,
+        country: location,
+        population: parseInt(population),
+        continent: continent
+    };
+
+    try {
+        const response = await axios.post(customObjectEndpoint, {
+            properties: properties
+        }, { headers });
+        
+
+        // Redirect to home page after successful creation
+        res.redirect('/');
+    } catch (error) {
+        
+        if (error.response?.status === 401) {
+            // If token is expired or invalid, clear session and redirect to home
+            req.session.destroy();
+            return res.redirect('/');
+        }
+        
+        // Send more detailed error information to the client
+        res.status(500).send(`Error creating custom object: ${JSON.stringify(error.response?.data || error.message)}`);
+    }
 });
 
 app.listen(PORT, () => console.log(`=== Starting your app on http://localhost:${PORT} ===`));

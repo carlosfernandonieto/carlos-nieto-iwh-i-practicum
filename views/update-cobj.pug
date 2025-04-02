@@ -6,18 +6,24 @@ html
         link(rel="stylesheet", href="/css/style.css")
     body    
         h1 Update Custom Object Form | Integrating With HubSpot I Practicum
-            form(action="/update-cobj" method="POST")
-                .form-group
-                    label(for="name") Name:
-                    input(type="text" id="name" name="name" required)
-                
-                .form-group
-                    label(for="email") Email:
-                    input(type="email" id="email" name="email" required)
-                
-                .form-group
-                    label(for="location") Location:
-                    input(type="text" id="location" name="location" required)
-                
-                button(type="submit") Submit Contact
-            a(href="/") Return to Homepage
+        .custom-objects-container
+            .custom-object-card
+                form(action="/update-cobj" method="POST")
+                    .form-group
+                        label(for="name") Name:
+                        input(type="text" id="name" name="name" required)
+                    
+                    .form-group
+                        label(for="location") Country:
+                        input(type="text" id="location" name="location" required)
+                    
+                    .form-group
+                        label(for="population") Population:
+                        input(type="number" id="population" name="population" required)
+                    
+                    .form-group
+                        label(for="continent") Continent:
+                        input(type="text" id="continent" name="continent" required)
+                    
+                    button.update-button(type="submit") Submit Contact
+                a.update-button(href="/") Return to Homepage
